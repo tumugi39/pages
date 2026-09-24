@@ -28,27 +28,36 @@
             const parser = new UAParser();
 
             try {
-                // ② Client Hints を用いて高精度な解析を実行（非同期）
-                // これにより、Windows 11 などの正確なOSバージョンが取得できます
-                const result = await parser.withClientHints();
+                // ① 高精度解析のリクエストに engines: true を追加
+                const result = await parser.withClientHints({
+                    browsers: true,
+                    os: true,
+                    device: true,
+                    engines: true, // ← これを追加
+                    uaFullVersion: true
+                });
 
-                // 表示用HTMLの組み立て
+                // ② 出力用のHTMLにエンジンの情報を追加
                 const output = `
-                    <p>ブラウザ: <span>${result.browser.name || '不明'} (${result.browser.version || ''})</span></p>
-                    <p>OS: <span>${result.os.name || '不明'} (${result.os.version || ''})</span></p>
-                    <p>デバイス: <span>${result.device.vendor || ''} ${result.device.model || 'PC / デスクトップ'}</span></p>
-                    <p>CPU型: <span>${result.cpu.architecture || '不明'}</span></p>
-                `;
-
+    <p>ブラウザ: <span>${result.browser.name || '不明'} (${result.browser.version || ''})</span></p>
+    
+    <!-- エンジン名とエンジンバージョンを表示 -->
+    <p>エンジン: <span>${result.engine.name || '不明'} (Ver: ${result.engine.version || '取得不可'})</span></p>
+    
+    <p>OS: <span>${result.os.name || '不明'} (${result.os.version || ''})</span></p>
+    <p>デバイス: <span>${result.device.vendor || ''} ${result.device.model || 'PC / デスクトップ'}</span></p>
+    <p>CPU型: <span>${result.cpu.architecture || '不明'}</span></p>
+`;
+                
                 document.getElementById('result').innerHTML = output;
                 document.getElementById('result').classList.remove('loading');
 
             } catch (error) {
-                // 万が一Client Hintsが拒否されたり失敗した場合のフォールバック（通常のUA判定）
+                // 通常モード（フォールバック）の処理にもエンジン情報を追加
                 const result = parser.getResult();
-                
                 const output = `
                     <p>ブラウザ: <span>${result.browser.name || '不明'}</span></p>
+                    <p>エンジン: <span>${result.engine.name || '不明'}</span></p>
                     <p>OS: <span>${result.os.name || '不明'}</span></p>
                     <p>(※高精度解析に失敗したため、通常モードで判定しました)</p>
                 `;
