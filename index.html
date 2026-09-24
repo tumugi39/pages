@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UAParser.js デモ</title>
+    <!-- ① UAParser.js をCDNから読み込む (最新の v2.x 系統) -->
+    <script src="https://unpkg.com"></script>
+</head>
+<body>
+
+    <h1>あなたの環境情報</h1>
+    <div id="result">解析中...</div>
+
+    <script>
+        // ページが読み込まれたら実行
+        window.addEventListener('DOMContentLoaded', () => {
+            // ② UAParser のインスタンスを作成して結果を取得
+            const parser = new UAParser();
+            const result = parser.getResult();
+
+            // ③ 画面に結果を表示するためのHTMLを組み立て
+            const output = `
+                <p><strong>ブラウザ:</strong> ${result.browser.name || '不明'} (${result.browser.version || ''})</p>
+                <p><strong>OS (オペレーティングシステム):</strong> ${result.os.name || '不明'} (${result.os.version || ''})</p>
+                <p><strong>デバイス:</strong> ${result.device.vendor || ''} ${result.device.model || 'PC / デスクトップ'}</p>
+                <p><strong>CPU:</strong> ${result.cpu.architecture || '不明'}</p>
+            `;
+
+            // ④ 画面に反映
+            document.getElementById('result').innerHTML = output;
+        });
+    </script>
+
+</body>
+</html>
