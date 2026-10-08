@@ -1,399 +1,70 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
-
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>safe-area-inset-bottom 検証</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UAParser.js クライアント分析</title>
+    <!-- スタイル（見た目を少し綺麗に） -->
     <style>
-        :root {
-            --bg: #f5f6f7;
-            --fg: #1b1f23;
-            --mute: #5b646d;
-            --line: #d3d8dd;
-            --card: #ffffff;
-            --zone: #e5484d;
-            --bar: #1b1f23;
-            --barfg: #ffffff;
-            --ok: #1a7f4b;
-            --ng: #c2410c;
-            --bar-h: 56px;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            :root:not([data-theme="light"]) {
-                --bg: #111418;
-                --fg: #e8ebee;
-                --mute: #98a2ad;
-                --line: #2d343b;
-                --card: #1a1f24;
-                --bar: #e8ebee;
-                --barfg: #111418;
-                --ok: #4cc38a;
-                --ng: #fb923c;
-            }
-        }
-
-        :root[data-theme="dark"] {
-            --bg: #111418;
-            --fg: #e8ebee;
-            --mute: #98a2ad;
-            --line: #2d343b;
-            --card: #1a1f24;
-            --bar: #e8ebee;
-            --barfg: #111418;
-            --ok: #4cc38a;
-            --ng: #fb923c;
-        }
-
-        * {
-            box-sizing: border-box
-        }
-
-        html {
-            background: var(--bg)
-        }
-
-        body {
-            margin: 0;
-            background: var(--bg);
-            color: var(--fg);
-            font: 15px/1.6 system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
-            /* 固定バーに隠れない分だけ余白を確保(検証対象のinsetとは独立) */
-            padding: 16px 16px calc(var(--bar-h) + 120px);
-        }
-
-        h1 {
-            font-size: 18px;
-            margin: 0 0 4px
-        }
-
-        p.lead {
-            margin: 0 0 16px;
-            color: var(--mute);
-            font-size: 13px
-        }
-
-        section {
-            background: var(--card);
-            border: 1px solid var(--line);
-            border-radius: 8px;
-            padding: 12px 14px;
-            margin: 0 0 14px
-        }
-
-        h2 {
-            font-size: 14px;
-            margin: 0 0 8px
-        }
-
-        .scroll-x {
-            overflow-x: auto
-        }
-
-        table {
-            border-collapse: collapse;
-            width: 100%;
-            font-variant-numeric: tabular-nums
-        }
-
-        th,
-        td {
-            text-align: left;
-            padding: 5px 8px 5px 0;
-            border-bottom: 1px solid var(--line);
-            font-size: 13px;
-            white-space: nowrap
-        }
-
-        td.v {
-            font-weight: 600
-        }
-
-        tr:last-child th,
-        tr:last-child td {
-            border-bottom: 0
-        }
-
-        .ok {
-            color: var(--ok)
-        }
-
-        .ng {
-            color: var(--ng)
-        }
-
-        label.sw {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            font-size: 14px
-        }
-
-        label.sw input {
-            width: 20px;
-            height: 20px
-        }
-
-        pre {
-            margin: 8px 0 0;
-            padding: 10px;
-            background: var(--bg);
-            border: 1px solid var(--line);
-            border-radius: 6px;
-            font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-            overflow-x: auto;
-            white-space: pre
-        }
-
-        button {
-            font: inherit;
-            padding: 8px 14px;
-            border-radius: 6px;
-            border: 1px solid var(--line);
-            background: var(--card);
-            color: var(--fg)
-        }
-
-        .filler div {
-            padding: 10px 0;
-            border-bottom: 1px dashed var(--line);
-            color: var(--mute);
-            font-size: 13px
-        }
-
-        /* 単位プローブ(画面外・計測専用) */
-        #probe {
-            position: fixed;
-            left: -9999px;
-            top: 0;
-            width: 10px;
-            visibility: hidden;
-            pointer-events: none;
-            padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px)
-        }
-
-        #probe i {
-            display: block;
-            width: 1px
-        }
-
-        #u-vh {
-            height: 100vh
-        }
-
-        #u-svh {
-            height: 100svh
-        }
-
-        #u-lvh {
-            height: 100lvh
-        }
-
-        #u-dvh {
-            height: 100dvh
-        }
-
-        /* 検証対象: 下部固定バー */
-        .bar {
-            position: fixed;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 10;
-            background: var(--bar);
-            color: var(--barfg);
-        }
-
-        .bar .row {
-            height: var(--bar-h);
-            display: flex;
-            align-items: center;
-            justify-content: space-around;
-            font-size: 13px
-        }
-
-        .bar .zone {
-            height: 0
-        }
-
-        .bar.apply .zone {
-            height: env(safe-area-inset-bottom, 0px);
-            background: repeating-linear-gradient(135deg, var(--zone) 0 6px, transparent 6px 12px);
-        }
-
-        .guide {
-            position: fixed;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            height: 0;
-            border-top: 2px solid var(--zone);
-            z-index: 11;
-            pointer-events: none
-        }
+        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; color: #333; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 500px; margin: 0 auto; }
+        h1 { font-size: 20px; margin-top: 0; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+        p { margin: 10px 0; font-size: 16px; }
+        span { font-weight: bold; color: #0076ff; }
+        .loading { color: #888; font-style: italic; }
     </style>
+    <!-- ① UAParser.js v2 の読み込み -->
+    <script src="https://cdn.jsdelivr.net/npm/ua-parser-js/dist/ua-parser.min.js" defer></script>
 </head>
-
 <body>
 
-    <h1>env(safe-area-inset-*) 検証</h1>
-    <p class="lead">下部バーの赤い斜線が <code>env(safe-area-inset-bottom)</code> の領域です。画面をスクロールして、ツールバーが出入りしたときの値と位置の変化を確認できます。
-    </p>
-
-    <section>
-        <h2>表示設定</h2>
-        <label class="sw"><input type="checkbox" id="apply" checked> バーに <code>env(safe-area-inset-bottom)</code>
-            を適用する</label>
-        <label class="sw" style="margin-top:8px"><input type="checkbox" id="guide" checked> 画面下端のガイド線(赤)を表示する</label>
-    </section>
-
-    <section>
-        <h2>セーフエリア inset</h2>
-        <div class="scroll-x">
-            <table id="t-inset"></table>
-        </div>
-    </section>
-
-    <section>
-        <h2>ビューポート</h2>
-        <div class="scroll-x">
-            <table id="t-vp"></table>
-        </div>
-    </section>
-
-    <section>
-        <h2>バーの位置</h2>
-        <div class="scroll-x">
-            <table id="t-bar"></table>
-        </div>
-        <p class="lead" style="margin:8px 0 0">「バー下端 - innerHeight」が 0 なら画面下端に密着しています。</p>
-    </section>
-
-    <section>
-        <h2>コピー用ログ</h2>
-        <button id="copy" type="button">ログをコピー</button>
-        <span id="copied" class="lead" style="margin-left:8px"></span>
-        <pre id="log"></pre>
-    </section>
-
-    <section class="filler" id="filler">
-        <h2>スクロール用</h2>
-    </section>
-
-    <div id="probe" aria-hidden="true">
-        <i id="u-vh"></i><i id="u-svh"></i><i id="u-lvh"></i><i id="u-dvh"></i>
+    <div class="card">
+        <h1>💻 あなたの接続環境情報</h1>
+        <div id="result" class="loading">解析中... (ブラウザへの権限確認含む)</div>
     </div>
 
-    <div class="guide" id="guideLine"></div>
-    <nav class="bar apply" id="bar">
-        <div class="row"><span>ホーム</span><span>検索</span><span>タブ</span><span>メニュー</span></div>
-        <div class="zone"></div>
-    </nav>
-
     <script>
-        (function () {
-            var $ = function (id) { return document.getElementById(id); };
-            var fmt = function (n) { return (Math.round(n * 100) / 100) + 'px'; };
+        window.addEventListener('DOMContentLoaded', async () => {
+            const parser = new UAParser();
 
-            // スクロール用ダミー行
-            var f = $('filler');
-            for (var i = 1; i <= 40; i++) {
-                var d = document.createElement('div');
-                d.textContent = 'スクロール用の行 ' + i;
-                f.appendChild(d);
+            try {
+                // ① 高精度解析のリクエストに engines: true を追加
+                const result = await parser.withClientHints({
+                    browsers: true,
+                    os: true,
+                    device: true,
+                    engines: true, // ← これを追加
+                    uaFullVersion: true
+                });
+
+                // ② 出力用のHTMLにエンジンの情報を追加
+                const output = `
+    <p>ブラウザ: <span>${result.browser.name || '不明'} (${result.browser.version || ''})</span></p>
+    
+    <!-- エンジン名とエンジンバージョンを表示 -->
+    <p>エンジン: <span>${result.engine.name || '不明'} (Ver: ${result.engine.version || '取得不可'})</span></p>
+    
+    <p>OS: <span>${result.os.name || '不明'} (${result.os.version || ''})</span></p>
+    <p>デバイス: <span>${result.device.vendor || ''} ${result.device.model || 'PC / デスクトップ'}</span></p>
+    <p>CPU型: <span>${result.cpu.architecture || '不明'}</span></p>
+`;
+
+                document.getElementById('result').innerHTML = output;
+                document.getElementById('result').classList.remove('loading');
+
+            } catch (error) {
+                // 通常モード（フォールバック）の処理にもエンジン情報を追加
+                const result = parser.getResult();
+                const output = `
+                    <p>ブラウザ: <span>${result.browser.name || '不明'}(Ver: ${result.browser.version || '取得不可'})</span></p>
+                    <p>エンジン: <span>${result.engine.name || '不明'}(Ver: ${result.engine.version || '取得不可'})</span></p>
+                    <p>OS: <span>${result.os.name || '不明'}</span></p>
+                    <p>(※高精度解析に失敗したため、通常モードで判定しました)</p>
+                `;
+                document.getElementById('result').innerHTML = output;
             }
-
-            function row(k, v, cls) {
-                return '<tr><th>' + k + '</th><td class="v ' + (cls || '') + '">' + v + '</td></tr>';
-            }
-            function ts() {
-                var d = new Date(), p = function (n) { return String(n).padStart(2, '0'); };
-                return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' +
-                    p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
-            }
-
-            function update() {
-                var cs = getComputedStyle($('probe'));
-                var inset = {
-                    top: parseFloat(cs.paddingTop) || 0,
-                    right: parseFloat(cs.paddingRight) || 0,
-                    bottom: parseFloat(cs.paddingBottom) || 0,
-                    left: parseFloat(cs.paddingLeft) || 0
-                };
-                var envOk = !!(window.CSS && CSS.supports && CSS.supports('padding-bottom', 'env(safe-area-inset-bottom)'));
-                var vv = window.visualViewport;
-                var unit = function (id, name) {
-                    var ok = window.CSS && CSS.supports && CSS.supports('height', '100' + name);
-                    return ok ? $(id).offsetHeight : null;
-                };
-                var u = { vh: unit('u-vh', 'vh'), svh: unit('u-svh', 'svh'), lvh: unit('u-lvh', 'lvh'), dvh: unit('u-dvh', 'dvh') };
-                var barRect = $('bar').getBoundingClientRect();
-                var diff = barRect.bottom - window.innerHeight;
-                var meta = document.querySelector('meta[name=viewport]').content;
-
-                $('t-inset').innerHTML =
-                    row('env() 対応', envOk ? 'あり' : 'なし', envOk ? 'ok' : 'ng') +
-                    row('top', fmt(inset.top)) + row('right', fmt(inset.right)) +
-                    row('bottom', fmt(inset.bottom)) + row('left', fmt(inset.left));
-
-                $('t-vp').innerHTML =
-                    row('innerWidth × innerHeight', window.innerWidth + ' × ' + window.innerHeight) +
-                    row('clientHeight (html)', document.documentElement.clientHeight + 'px') +
-                    row('visualViewport.height', vv ? fmt(vv.height) : '非対応') +
-                    row('visualViewport.offsetTop', vv ? fmt(vv.offsetTop) : '非対応') +
-                    row('screen.height', screen.height + 'px') +
-                    row('100vh', u.vh == null ? '非対応' : u.vh + 'px') +
-                    row('100svh', u.svh == null ? '非対応' : u.svh + 'px') +
-                    row('100lvh', u.lvh == null ? '非対応' : u.lvh + 'px') +
-                    row('100dvh', u.dvh == null ? '非対応' : u.dvh + 'px') +
-                    row('devicePixelRatio', String(window.devicePixelRatio));
-
-                $('t-bar').innerHTML =
-                    row('バー top / bottom', fmt(barRect.top) + ' / ' + fmt(barRect.bottom)) +
-                    row('バー高さ', fmt(barRect.height)) +
-                    row('バー下端 − innerHeight', fmt(diff), Math.abs(diff) < 0.5 ? 'ok' : 'ng') +
-                    row('scrollY', fmt(window.scrollY));
-
-                $('log').textContent = [
-                    '[' + ts() + '] viewport-meta: ' + meta,
-                    '[' + ts() + '] env-supported: ' + envOk,
-                    '[' + ts() + '] inset(t/r/b/l): ' + [inset.top, inset.right, inset.bottom, inset.left].map(fmt).join(' / '),
-                    '[' + ts() + '] inner: ' + window.innerWidth + 'x' + window.innerHeight +
-                    ' / visualViewport.h: ' + (vv ? fmt(vv.height) : 'n/a') + ' / screen.h: ' + screen.height,
-                    '[' + ts() + '] vh/svh/lvh/dvh: ' + ['vh', 'svh', 'lvh', 'dvh'].map(function (k) { return u[k] == null ? 'n/a' : u[k]; }).join(' / '),
-                    '[' + ts() + '] bar-bottom-minus-innerHeight: ' + fmt(diff) + ' (apply=' + $('apply').checked + ')',
-                    '[' + ts() + '] UA: ' + navigator.userAgent
-                ].join('\n');
-            }
-
-            $('apply').addEventListener('change', function () {
-                $('bar').classList.toggle('apply', this.checked);
-                update();
-            });
-            $('guide').addEventListener('change', function () {
-                $('guideLine').style.display = this.checked ? 'block' : 'none';
-            });
-            $('copy').addEventListener('click', function () {
-                var text = $('log').textContent, msg = $('copied');
-                var done = function (ok) { msg.textContent = ok ? 'コピーしました' : '選択してコピーしてください'; };
-                try {
-                    navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
-                } catch (e) { done(false); }
-            });
-
-            var t;
-            function schedule() { cancelAnimationFrame(t); t = requestAnimationFrame(update); }
-            window.addEventListener('resize', schedule);
-            window.addEventListener('scroll', schedule, { passive: true });
-            window.addEventListener('orientationchange', function () { setTimeout(update, 300); });
-            if (window.visualViewport) {
-                visualViewport.addEventListener('resize', schedule);
-                visualViewport.addEventListener('scroll', schedule);
-            }
-            update();
-        })();
+        });
     </script>
-</body>
 
+</body>
 </html>
