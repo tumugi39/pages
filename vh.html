@@ -1,0 +1,248 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flexa WebView Viewport Test</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font: 15px/1.5 system-ui, sans-serif;
+      color: #202124;
+      background: #f5f7fa;
+    }
+
+    header, main { padding: 16px; }
+
+    h1 { font-size: 22px; margin: 0 0 8px; }
+    h2 { font-size: 17px; margin: 20px 0 8px; }
+
+    .info, .card {
+      background: white;
+      border: 1px solid #dadce0;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .results {
+      font: 13px/1.7 monospace;
+      white-space: pre-wrap;
+    }
+
+    .sample {
+      width: 100%;
+      height: var(--sample-height, 100vh);
+      background: #b3e5fc;
+      border: 2px solid #0288d1;
+      padding: 12px;
+      overflow: auto;
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    button {
+      border: 1px solid #aaa;
+      border-radius: 8px;
+      background: white;
+      padding: 9px 12px;
+      font-size: 14px;
+    }
+
+    button:focus { outline: 2px solid #4285f4; }
+
+    .bar {
+      height: 8px;
+      background: #e0e0e0;
+      border-radius: 5px;
+      overflow: hidden;
+      margin-top: 5px;
+    }
+
+    .bar > div {
+      height: 100%;
+      background: #0288d1;
+      width: 0;
+    }
+
+    .label { font-weight: 600; }
+    .muted { color: #666; font-size: 13px; }
+
+    #fixedTests {
+      position: fixed;
+      left: -100px;
+      top: 0;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      visibility: hidden;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Flexa WebView Viewport Test</h1>
+  <div class="muted">
+    CSS viewport units / Android WebView diagnostic
+  </div>
+</header>
+
+<main>
+  <section class="info">
+    <h2>1. 実行環境</h2>
+    <div id="environment" class="results">測定中...</div>
+  </section>
+
+  <section class="info">
+    <h2>2. 高さの比較</h2>
+    <div id="results" class="results">測定中...</div>
+    <button onclick="runTests()">再測定</button>
+  </section>
+
+  <section class="card">
+    <h2>3. 表示テスト</h2>
+    <p class="muted">
+      単位を切り替えて、青い領域の高さを確認してください。
+    </p>
+    <div class="buttons">
+      <button onclick="showUnit('100vh')">100vh</button>
+      <button onclick="showUnit('100dvh')">100dvh</button>
+      <button onclick="showUnit('100svh')">100svh</button>
+      <button onclick="showUnit('100lvh')">100lvh</button>
+      <button onclick="showUnit('100%')">100%</button>
+      <button onclick="showUnit('100px')">100px</button>
+    </div>
+    <p id="selected" class="label">選択中: 100vh</p>
+    <div id="sample" class="sample" style="height:100vh">
+      この青い領域の高さを確認
+      <p id="sampleHeight">測定中...</p>
+    </div>
+  </section>
+
+  <section class="info">
+    <h2>4. html / body</h2>
+    <div id="documentInfo" class="results"></div>
+  </section>
+</main>
+
+<div id="fixedTests" aria-hidden="true"></div>
+
+<script>
+  const units = [
+    '100vh', '100dvh', '100svh',
+    '100lvh', '100%', '100px'
+  ];
+
+  function measureHeight(value) {
+    const el = document.createElement('div');
+
+    el.style.cssText = [
+      'position:fixed',
+      'top:0',
+      'left:0',
+      'width:1px',
+      'padding:0',
+      'margin:0',
+      'border:0',
+      'min-height:0',
+      'max-height:none',
+      'visibility:hidden',
+      'pointer-events:none',
+      `height:${value}`
+    ].join(';');
+
+    document.body.appendChild(el);
+
+    const result = {
+      computed: getComputedStyle(el).height,
+      rect: el.getBoundingClientRect().height,
+      offset: el.offsetHeight
+    };
+
+    el.remove();
+    return result;
+  }
+
+  function runTests() {
+    const vv = window.visualViewport;
+
+    document.getElementById('environment').textContent =
+      JSON.stringify({
+        href: location.href,
+        userAgent: navigator.userAgent,
+        readyState: document.readyState,
+        innerWidth: innerWidth,
+        innerHeight: innerHeight,
+        clientWidth: document.documentElement.clientWidth,
+        clientHeight: document.documentElement.clientHeight,
+        devicePixelRatio: devicePixelRatio,
+        visualViewport: vv ? {
+          width: vv.width,
+          height: vv.height,
+          scale: vv.scale,
+          offsetTop: vv.offsetTop
+        } : null,
+        supportsVh: CSS.supports('height', '100vh'),
+        supportsDvh: CSS.supports('height', '100dvh')
+      }, null, 2);
+
+    const measurements = {};
+    for (const unit of units) {
+      measurements[unit] = measureHeight(unit);
+    }
+
+    document.getElementById('results').textContent =
+      Object.entries(measurements)
+        .map(([unit, m]) =>
+          `${unit.padEnd(7)} computed=${m.computed}, rect=${m.rect}, offset=${m.offset}`
+        )
+        .join('\n');
+
+    document.getElementById('documentInfo').textContent =
+      JSON.stringify({
+        htmlComputedHeight:
+          getComputedStyle(document.documentElement).height,
+        htmlRectHeight:
+          document.documentElement.getBoundingClientRect().height,
+        bodyComputedHeight: getComputedStyle(document.body).height,
+        bodyRectHeight:
+          document.body.getBoundingClientRect().height,
+        bodyScrollHeight: document.body.scrollHeight,
+        documentScrollHeight: document.documentElement.scrollHeight,
+        viewportMeta:
+          document.querySelector('meta[name="viewport"]')?.content
+      }, null, 2);
+
+    updateSampleHeight();
+  }
+
+  function showUnit(unit) {
+    document.getElementById('selected').textContent =
+      '選択中: ' + unit;
+
+    document.getElementById('sample').style.height = unit;
+    updateSampleHeight();
+  }
+
+  function updateSampleHeight() {
+    const el = document.getElementById('sample');
+    document.getElementById('sampleHeight').textContent =
+      `CSS height: ${getComputedStyle(el).height}\n` +
+      `実測 height: ${el.getBoundingClientRect().height}px`;
+  }
+
+  window.addEventListener('resize', runTests);
+  window.addEventListener('load', runTests);
+  runTests();
+</script>
+</body>
+</html>
